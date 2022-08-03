@@ -320,13 +320,13 @@ namespace modbusPlcSimulator
             switch (groupindex)
             {
                 //case 1:
-                //    return this.dataStore.CoilDiscretes; //不由moddbus修改
+                //    return this.dataStore.CoilDiscretes; //不由modbus修改
                 //    break;
                 //case 2:
-                //    return this.dataStore.InputDiscretes; //不由moddbus修改
+                //    return this.dataStore.InputDiscretes; //不由modbus修改
                 //    break;
                 case 3:
-                    return this.dataStore.HoldingRegisters; //可由moddbus修改
+                    return this.dataStore.HoldingRegisters; //可由modbus修改
                 case 4:
                     return this.dataStore.InputRegisters;   //不可通过modbus修改
                 default:

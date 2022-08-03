@@ -14,116 +14,133 @@ using Modbus.Message;
 
 namespace modbusPlcSimulator
 {
-
-
     public class Node : IDisposable
     {
-        private Thread _thread;
-        private ModbusSlave _modbusSlave;
-        private TcpListener _listener;
-        private IPAddress _ip;
-        public string _status { get; set; } //状态
-        public bool _isRunning = false;
-        public int _id { get; set; }
-        public int _port { get; set; }
-        public string _name { get; set; }
-        // public TurbineType _type{ get; set; }
-        public string _typeStr { get; set; }
-        private readonly DataStore _dataStore;
-        private readonly byte _slaveId = 1; //设备id,默认为1
+        #region Field
 
-        private DataTable _dt = new DataTable();//保存配置文件
-        private readonly Dictionary<string, int> _ioName2index = new Dictionary<string, int>();//保存ioName 到在datable中的索引
-        public DataStore getDataStore()
+        private Thread _thread;
+
+        private ModbusSlave modbusSlave;
+        private TcpListener listener;
+        private IPAddress ip;
+
+
+        public bool isRunning = false;
+
+        private readonly DataStore dataStore;
+
+        /// <summary>
+        /// 设备id,默认为1
+        /// </summary>
+        private readonly byte slaveId = 1;
+
+        /// <summary>
+        /// 保存配置文件
+        /// </summary>
+        private DataTable _dt = new DataTable();
+
+        /// <summary>
+        /// 保存ioName 到在datable中的索引
+        /// </summary>
+        private readonly Dictionary<string, int> ioName2indexMap = new Dictionary<string, int>();
+
+        #endregion
+
+        #region Property
+
+        public string Status { get; set; } //状态
+
+        public int Id { get; set; }
+
+        public int Port { get; set; }
+
+        public string Name { get; set; }
+
+        public string Type { get; set; }
+
+        public DataStore DataStore
         {
-            return this._dataStore;
+            get
+            {
+                return this.dataStore;
+            }
         }
 
-        public Node(int id, int port, string typeStr)
+        #endregion
+
+        #region Constructor
+
+        public Node(int id, int port, string type)
         {
-            this._id = id;
-            this._port = port;
-            this._typeStr = typeStr;
-            this._name = id.ToString() + "#设备";
-            this._dataStore = DataStoreFactory.CreateDefaultDataStore();
-            this._status = "服务未启动";
+            this.Id = id;
+            this.Port = port;
+            this.Type = type;
+            this.Name = id.ToString() + "#设备";
+
+            this.dataStore = DataStoreFactory.CreateDefaultDataStore();
+            this.Status = "服务未启动";
             string errStr = "";
-            if (!this.initNodeData(ref errStr))
+
+            if (!this.InitNodeData(ref errStr))
             {
-                string outStr = "[" + this._name + "]" + "CSV数据解析失败! \n请检查" + typeStr + ".CSV \n";
+                string outStr = "[" + this.Name + "]" + "CSV数据解析失败! \n请检查" + type + ".CSV \n";
                 outStr += errStr;
                 MessageBox.Show(outStr, "出错了", MessageBoxButtons.OK, MessageBoxIcon.Error);  //用风机类型初始化数据
             }
 
         }
 
-        public void start()
+        #endregion
+
+        #region Public Method
+
+        public void Start()
         {
-            if (this._isRunning)
+            if (this.isRunning)
             {
                 return;
             }
 
-            if (IsPortUsed(this._port))
+            if (IsPortUsed(this.Port))
             {
-                string errorStr = "TCP端口：[" + this._port.ToString() + "]" + "被占用";
+                string errorStr = "TCP端口：[" + this.Port.ToString() + "]" + "被占用";
                 MessageBox.Show(errorStr, "出错了", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
             try
             {
-                this._ip = new IPAddress(new byte[] { 0, 0, 0, 0 }); //new IPAddress(new byte[] { 127, 0, 0, 1 });
-                this._listener = new TcpListener(this._ip, this._port);
+                this.ip = new IPAddress(new byte[] { 0, 0, 0, 0 }); //new IPAddress(new byte[] { 127, 0, 0, 1 });
+                this.listener = new TcpListener(this.ip, this.Port);
 
-                this._modbusSlave = ModbusTcpSlave.CreateTcp(this._slaveId, this._listener);
-                this._modbusSlave.DataStore = this._dataStore;
-                this._modbusSlave.ModbusSlaveRequestReceived += this.requestReceiveHandler;
+                this.modbusSlave = ModbusTcpSlave.CreateTcp(this.slaveId, this.listener);
+                this.modbusSlave.DataStore = this.dataStore;
+                this.modbusSlave.ModbusSlaveRequestReceived += this.RequestReceiveHandler;
 
-                this._thread = new Thread(this._modbusSlave.Listen) { Name = this._port.ToString() };
+                this._thread = new Thread(this.modbusSlave.Listen) { Name = this.Port.ToString() };
                 this._thread.Start();
-                this._status = "服务运行中";
-                this._isRunning = true;
+                this.Status = "服务运行中";
+                this.isRunning = true;
             }
             catch (Exception)
             {
-                string errorStr = "[" + this._name + "]" + "风机启动失败";
+                string errorStr = "[" + this.Name + "]" + "风机启动失败";
                 MessageBox.Show(errorStr, "出错了", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-        private void requestReceiveHandler(object sender, ModbusSlaveRequestEventArgs e)//收到请求
+        public void Stop()
         {
-            IModbusMessage message = e.Message;
-            string writeLogStr = this._name + ": " + message;
-
-            if (message.FunctionCode == 6)//6是写单个寄存器
-            {
-                Program._logForm.addWriteLog(writeLogStr);
-                return;
-            }
-            else if (message.FunctionCode == 16)//16是写多个模拟量寄存器
-            {
-                Program._logForm.addWriteLog(writeLogStr);
-                return;
-            }
-            string logStr = this._name + " Receive Request：" + message;
-            Program._logForm.addLog(logStr);
-        }
-
-
-        public void stop()
-        {
-            if (this._isRunning == false)
+            if (this.isRunning == false)
             {
                 return;
             }
-            this._status = "服务停止";
-            this._isRunning = false;
+            this.Status = "服务停止";
+            this.isRunning = false;
             try
             {
 
-                this._modbusSlave.Dispose();
+                this.modbusSlave.Dispose();
                 //_listener.Stop();
                 this._thread.Abort();
             }
@@ -135,27 +152,16 @@ namespace modbusPlcSimulator
 
         public void Dispose()
         {
-            this.stop();
+            this.Stop();
         }
 
-        private ModbusDataCollection<ushort> getRegisterGroup(int groupindex)//根据3或4返回适合的寄存器
-        {
-            switch (groupindex)
-            {
-                case 3:
-                    return this._dataStore.HoldingRegisters; //可由moddbus修改
-                case 4:
-                    return this._dataStore.InputRegisters;   //不可通过modbus修改
-                default:
-                    return this._dataStore.InputRegisters;
-            }
-        }
-        public void setValue16(int groupindex, int offset, ushort value)
+
+        public void SetValue16(int groupindex, int offset, ushort value)
         {
             ModbusDataCollection<ushort> data = this.getRegisterGroup(groupindex);
             data[offset] = value;
         }
-        public void setValue32(int groupindex, int offset, int value)
+        public void SetValue32(int groupindex, int offset, int value)
         {
             byte[] valueBuf = BitConverter.GetBytes(value);
             ushort lowOrderValue = BitConverter.ToUInt16(valueBuf, 0);
@@ -165,7 +171,7 @@ namespace modbusPlcSimulator
             data[offset] = lowOrderValue;
             data[offset + 1] = highOrderValue;
         }
-        public void setValue32(int groupindex, int offset, float value)
+        public void SetValue32(int groupindex, int offset, float value)
         {
             ushort lowOrderValue = BitConverter.ToUInt16(BitConverter.GetBytes(value), 0);
             ushort highOrderValue = BitConverter.ToUInt16(BitConverter.GetBytes(value), 2);
@@ -173,7 +179,7 @@ namespace modbusPlcSimulator
             data[offset] = lowOrderValue;
             data[offset + 1] = highOrderValue;
         }
-        public void setValue16(int groupindex, int offset, bool value)
+        public void SetValue16(int groupindex, int offset, bool value)
         {
             byte[] valueBuf = BitConverter.GetBytes(value);//用1代替true
             ushort lowOrderValue = BitConverter.ToUInt16(valueBuf, 0);
@@ -183,17 +189,17 @@ namespace modbusPlcSimulator
 
         }
 
-        public bool initNodeData(ref string errorStr)
+        public bool InitNodeData(ref string errorStr)
         {
             this._dt = null;
 
             try
             {
-                if (this._typeStr.Length == 0)
+                if (this.Type.Length == 0)
                 { return false; }
 
                 string configDirStr = MAppConfig.getValueByName("defaultCfgDir");
-                string csvFileName = configDirStr + "/" + this._typeStr + ".csv";// _typeStr是MY1500， 采用MY1500.csv作为模型名
+                string csvFileName = configDirStr + "/" + this.Type + ".csv";// _typeStr是MY1500， 采用MY1500.csv作为模型名
                 bool ret = CSVReader.readCSV(csvFileName, out this._dt);
                 if (!ret)
                 {
@@ -210,7 +216,7 @@ namespace modbusPlcSimulator
                             return false;
                         }
 
-                        this._ioName2index[ioName] = i;
+                        this.ioName2indexMap[ioName] = i;
                     }
 
                     string groupindexStr = this._dt.Rows[i]["groupIndex"].ToString();
@@ -241,14 +247,14 @@ namespace modbusPlcSimulator
                     }
 
                     float coe = float.Parse(this._dt.Rows[i]["coe"].ToString());
-                    int coe_reverse = this.floatToInt(1.00000000f / coe);//1.0除以0.1得到0.9
+                    int coe_reverse = this.FloatToInt(1.00000000f / coe);//1.0除以0.1得到0.9
                     string valueStr = "0";
                     if (this._dt.Columns.Contains("value"))
                     {
                         valueStr = this._dt.Rows[i]["value"].ToString();//如果有value这一列就赋值，否则默认是0
                     }
 
-                    bool ret1 = this.setValueUniverse(groupindex, offset, dataTypeStr, coe_reverse, valueStr);
+                    bool ret1 = this.SetValueUniverse(groupindex, offset, dataTypeStr, coe_reverse, valueStr);
                     if (ret1 != true)
                     {
                         return false;
@@ -264,7 +270,7 @@ namespace modbusPlcSimulator
             }
         }//initData
 
-        public int floatToInt(float f)//四舍五入
+        public int FloatToInt(float f)//四舍五入
         {
             int i = 0;
             if (f > 0) //正数
@@ -283,64 +289,7 @@ namespace modbusPlcSimulator
             return i;
         }
 
-        private bool setValueUniverse(int groupindex, int offset, string dataTypeStr, int coe_reverse, string valueStr)
-        {
-            float value_f;
-            string offsetAddOne = MAppConfig.getValueByName("offsetAddOne");
-            if (offsetAddOne != "0")
-            {
-                offset += 1;//此处的内存对应的是modbus协议中的地址，比offset要多1。
-            }
-            else
-            {
-                offset += 0;//只在配置为0时才不加1
-            }
-
-            try
-            {
-                if (valueStr.Contains('.'))//有些点虽为INT型，但最终的值是float。风速为INT，modbus值为988这样。
-                {
-                    value_f = float.Parse(valueStr);
-                }
-                else
-                {
-                    value_f = int.Parse(valueStr);
-                }
-
-
-
-                switch (dataTypeStr.ToUpper())
-                {
-                    case "INT16":
-                    case "WORD":
-                    case "INT"://目前主控把INT当作16位
-                        this.setValue16(groupindex, offset, (ushort)(value_f * coe_reverse));
-                        break;
-                    case "INT32":
-                    case "DINT":
-                    case "DWORD":
-                        this.setValue32(groupindex, offset, (int)value_f * coe_reverse);
-                        break;
-                    case "REAL":
-                    case "FLOAT":
-                        value_f = float.Parse(valueStr);
-                        this.setValue32(groupindex, offset, value_f * coe_reverse);
-                        break;
-                    case "BIT"://先不管
-                        return true;
-                    default:
-                        this.setValue16(groupindex, offset, (ushort)(value_f * coe_reverse));
-                        break;
-                }
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-
-            return true;
-        }
-        public void setValueByName(string ioName, string valueStr)
+        public void SetValueByName(string ioName, string valueStr)
         {
             if (ioName.Length == 0 || valueStr.Length == 0)
             {
@@ -348,7 +297,7 @@ namespace modbusPlcSimulator
             }
 
             int ioNameIndex = 0;
-            if (!this.fetch(ioName, ref ioNameIndex))
+            if (!this.Fetch(ioName, ref ioNameIndex))
             {
                 return;
             }
@@ -359,9 +308,9 @@ namespace modbusPlcSimulator
 
                 string dataTypeStr = this._dt.Rows[ioNameIndex]["dataType"].ToString();
                 float coe = float.Parse(this._dt.Rows[ioNameIndex]["coe"].ToString());
-                int coe_reverse = this.floatToInt(1.0000f / coe);
+                int coe_reverse = this.FloatToInt(1.0000f / coe);
 
-                bool ret = this.setValueUniverse(groupindex, offset, dataTypeStr, coe_reverse, valueStr); //coe在这不起作用
+                bool ret = this.SetValueUniverse(groupindex, offset, dataTypeStr, coe_reverse, valueStr); //coe在这不起作用
             }
             catch (Exception)
             {
@@ -369,21 +318,6 @@ namespace modbusPlcSimulator
             }
 
         }
-
-        private bool fetch(string ioName, ref int index)//查找ioName 在_dt中的index
-        {
-            if (this._ioName2index.ContainsKey(ioName))
-            {
-                index = this._ioName2index[ioName];
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-
-
 
         /// <summary>
         /// 判断指定端口号是否被占用
@@ -416,5 +350,135 @@ namespace modbusPlcSimulator
             return result;
         }
 
-    }//class
+
+        #endregion
+
+        #region Event Handler
+
+        /// <summary>
+        ///  收到请求
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void RequestReceiveHandler(object sender, ModbusSlaveRequestEventArgs e)//
+        {
+            IModbusMessage message = e.Message;
+            string writeLogStr = this.Name + ": " + message;
+
+            if (message.FunctionCode == 6)//6是写单个寄存器
+            {
+                Program._logForm.addWriteLog(writeLogStr);
+                return;
+            }
+            else if (message.FunctionCode == 16)//16是写多个模拟量寄存器
+            {
+                Program._logForm.addWriteLog(writeLogStr);
+                return;
+            }
+            string logStr = this.Name + " Receive Request：" + message;
+            Program._logForm.addLog(logStr);
+        }
+
+        #endregion
+
+        #region Private Method
+
+        /// <summary>
+        /// 根据3或4返回适合的寄存器
+        /// </summary>
+        /// <param name="groupindex"></param>
+        /// <returns></returns>
+        private ModbusDataCollection<ushort> getRegisterGroup(int groupindex)//
+        {
+            switch (groupindex)
+            {
+                case 3:
+                    return this.dataStore.HoldingRegisters; //可由moddbus修改
+                case 4:
+                    return this.dataStore.InputRegisters;   //不可通过modbus修改
+                default:
+                    return this.dataStore.InputRegisters;
+            }
+        }
+
+        private bool SetValueUniverse(int groupindex, int offset, string dataTypeStr, 
+                                      int coe_reverse, string valueStr)
+        {
+            float value_f;
+            string offsetAddOne = MAppConfig.getValueByName("offsetAddOne");
+            if (offsetAddOne != "0")
+            {
+                offset += 1;//此处的内存对应的是modbus协议中的地址，比offset要多1。
+            }
+            else
+            {
+                offset += 0;//只在配置为0时才不加1
+            }
+
+            try
+            {
+                if (valueStr.Contains('.'))//有些点虽为INT型，但最终的值是float。风速为INT，modbus值为988这样。
+                {
+                    value_f = float.Parse(valueStr);
+                }
+                else
+                {
+                    value_f = int.Parse(valueStr);
+                }
+
+
+
+                switch (dataTypeStr.ToUpper())
+                {
+                    case "INT16":
+                    case "WORD":
+                    case "INT"://目前主控把INT当作16位
+                        this.SetValue16(groupindex, offset, (ushort)(value_f * coe_reverse));
+                        break;
+                    case "INT32":
+                    case "DINT":
+                    case "DWORD":
+                        this.SetValue32(groupindex, offset, (int)value_f * coe_reverse);
+                        break;
+                    case "REAL":
+                    case "FLOAT":
+                        value_f = float.Parse(valueStr);
+                        this.SetValue32(groupindex, offset, value_f * coe_reverse);
+                        break;
+                    case "BIT"://先不管
+                        return true;
+                    default:
+                        this.SetValue16(groupindex, offset, (ushort)(value_f * coe_reverse));
+                        break;
+                }
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 查找ioName 在_dt中的index
+        /// </summary>
+        /// <param name="ioName"></param>
+        /// <param name="index"></param>
+        /// <returns></returns>
+        private bool Fetch(string ioName, ref int index)//
+        {
+            if (this.ioName2indexMap.ContainsKey(ioName))
+            {
+                index = this.ioName2indexMap[ioName];
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        #endregion
+    }
 }

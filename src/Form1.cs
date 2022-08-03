@@ -25,11 +25,11 @@ namespace modbusPlcSimulator
             foreach (Node node in nodeList)
             {
                 int index = this.dataGridView1.Rows.Add();
-                this.dataGridView1.Rows[index].Cells[0].Value = node._id;
-                this.dataGridView1.Rows[index].Cells[1].Value = node._name;
-                this.dataGridView1.Rows[index].Cells[2].Value = node._port;
+                this.dataGridView1.Rows[index].Cells[0].Value = node.Id;
+                this.dataGridView1.Rows[index].Cells[1].Value = node.Name;
+                this.dataGridView1.Rows[index].Cells[2].Value = node.Port;
 
-                this.dataGridView1.Rows[index].Cells[4].Value = node._status;
+                this.dataGridView1.Rows[index].Cells[4].Value = node.Status;
             }
         }
         private void updateUI()
@@ -39,13 +39,13 @@ namespace modbusPlcSimulator
                 List<Node> nodeList = NodeMgr.getNodeList();
                 for (int index = 0; index < nodeList.Count; index++)
                 {
-                    this.dataGridView1.Rows[index].Cells[0].Value = nodeList[index]._id;
-                    this.dataGridView1.Rows[index].Cells[1].Value = nodeList[index]._name;
-                    this.dataGridView1.Rows[index].Cells[2].Value = nodeList[index]._port;
-                    this.dataGridView1.Rows[index].Cells[3].Value = nodeList[index]._typeStr;
-                    this.dataGridView1.Rows[index].Cells[4].Value = nodeList[index]._status;
+                    this.dataGridView1.Rows[index].Cells[0].Value = nodeList[index].Id;
+                    this.dataGridView1.Rows[index].Cells[1].Value = nodeList[index].Name;
+                    this.dataGridView1.Rows[index].Cells[2].Value = nodeList[index].Port;
+                    this.dataGridView1.Rows[index].Cells[3].Value = nodeList[index].Type;
+                    this.dataGridView1.Rows[index].Cells[4].Value = nodeList[index].Status;
 
-                    if (nodeList[index]._isRunning == true)
+                    if (nodeList[index].isRunning == true)
                     {
                         this.dataGridView1.Rows[index].Cells[4].Style.BackColor = Color.DeepSkyBlue;
                     }

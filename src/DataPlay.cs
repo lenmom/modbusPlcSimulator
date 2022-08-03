@@ -29,7 +29,7 @@ namespace modbusPlcSimulator
         public void toStart()
         {
             string configDirStr = MAppConfig.getValueByName("defaultCfgDir");
-            this._dataFileName = configDirStr + "/" + NodeMgr._nodeList[this._deviceIndex]._typeStr + "_data.csv";
+            this._dataFileName = configDirStr + "/" + NodeMgr._nodeList[this._deviceIndex].Type + "_data.csv";
 
             if (!this.readData(this._dataFileName))
             {
@@ -37,13 +37,13 @@ namespace modbusPlcSimulator
                 return;
             }
 
-            Thread thread = new Thread(this.run) { Name = "DataPlay" + NodeMgr._nodeList[this._deviceIndex]._name, IsBackground = true };
+            Thread thread = new Thread(this.run) { Name = "DataPlay" + NodeMgr._nodeList[this._deviceIndex].Name, IsBackground = true };
             thread.Start();
         }
         public void toStop()
         {
             this._bStop = true;//
-            this.FormLog("device:" + NodeMgr._nodeList[this._deviceIndex]._name + " 停止更新数据\n");
+            this.FormLog("device:" + NodeMgr._nodeList[this._deviceIndex].Name + " 停止更新数据\n");
 
         }
 
@@ -78,14 +78,14 @@ namespace modbusPlcSimulator
                     {
                         index = rand.Next() % this._dt.Rows.Count;//随机模式
                     }
-                    this.FormLog(NodeMgr._nodeList[this._deviceIndex]._name.PadLeft(10) + " 更新数据第" + index.ToString().PadLeft(4) + "行\n");
+                    this.FormLog(NodeMgr._nodeList[this._deviceIndex].Name.PadLeft(10) + " 更新数据第" + index.ToString().PadLeft(4) + "行\n");
 
                     DataRow Row = this._dt.Rows[index];
                     for (int col = 1; col < this._dt.Columns.Count; col++)//第0列作为时间暂不处理
                     {
                         string ioName = this._dt.Columns[col].ToString();
                         string valueStr = Row[col].ToString();
-                        NodeMgr._nodeList[this._deviceIndex].setValueByName(ioName, valueStr);
+                        NodeMgr._nodeList[this._deviceIndex].SetValueByName(ioName, valueStr);
 
                     }
                 }

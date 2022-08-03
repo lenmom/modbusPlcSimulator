@@ -72,7 +72,7 @@ namespace modbusPlcSimulator
         {
             foreach (Node node in _nodeList)
             {
-                node.stop();
+                node.Stop();
             }
         }
 
@@ -80,7 +80,7 @@ namespace modbusPlcSimulator
         {
             foreach (Node node in _nodeList)
             {
-                node.start();
+                node.Start();
             }
         }
 
@@ -88,9 +88,9 @@ namespace modbusPlcSimulator
         {
             foreach (Node node in _nodeList)
             {
-                if (node._id == id)
+                if (node.Id == id)
                 {
-                    node.start();
+                    node.Start();
                 }
             }
         }
@@ -99,9 +99,9 @@ namespace modbusPlcSimulator
         {
             foreach (Node node in _nodeList)
             {
-                if (node._id == id)
+                if (node.Id == id)
                 {
-                    node.stop();
+                    node.Stop();
                 }
             }
         }

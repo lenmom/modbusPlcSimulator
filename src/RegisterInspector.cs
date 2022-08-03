@@ -31,10 +31,10 @@ namespace modbusPlcSimulator
             for (int i = 0; i < NodeMgr._nodeList.Count; i++)
             {
                 Node node = NodeMgr._nodeList[i];
-                string name = node._name;
+                string name = node.Name;
                 this.comboBox1.Items.Add(name);
 
-                if (node._id.ToString() == this._selectIdStr)
+                if (node.Id.ToString() == this._selectIdStr)
                 {
                     this._node = node;
                     this.comboBox1.SelectedIndex = i;
@@ -84,13 +84,13 @@ namespace modbusPlcSimulator
             switch (this.comboBox_Register.SelectedIndex)
             {
                 case 0:
-                    data = this._node.getDataStore().HoldingRegisters;
+                    data = this._node.DataStore.HoldingRegisters;
                     break;//03功能
                 case 1:
-                    data = this._node.getDataStore().InputRegisters;
+                    data = this._node.DataStore.InputRegisters;
                     break;//04功能
                 default:
-                    data = this._node.getDataStore().HoldingRegisters;
+                    data = this._node.DataStore.HoldingRegisters;
                     break;
             }
             return data;

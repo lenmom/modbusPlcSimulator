@@ -29,7 +29,7 @@ namespace modbusPlcSimulator
         public void toStart()
         {
             string configDirStr = MAppConfig.getValueByName("defaultCfgDir");
-            this._dataFileName = configDirStr + "/" + NodeMgr._nodeList[this._deviceIndex].Type + "_data.csv";
+            this._dataFileName = configDirStr + "/" + NodeMgr._nodeList[this._deviceIndex].DeviceName + "_data.csv";
 
             if (!this.readData(this._dataFileName))
             {

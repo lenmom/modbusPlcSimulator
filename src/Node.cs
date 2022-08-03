@@ -22,7 +22,6 @@ namespace modbusPlcSimulator
 
         private ModbusSlave modbusSlave;
         private TcpListener listener;
-        private IPAddress ip;
 
 
         public bool isRunning = false;
@@ -56,7 +55,7 @@ namespace modbusPlcSimulator
 
         public string Name { get; set; }
 
-        public string Type { get; set; }
+        public string DeviceName { get; set; }
 
         public DataStore DataStore
         {
@@ -70,11 +69,13 @@ namespace modbusPlcSimulator
 
         #region Constructor
 
-        public Node(int id, int port, string type)
+        public Node(int id, int port, string deviceName)
         {
             this.Id = id;
             this.Port = port;
-            this.Type = type;
+            this.DeviceName = deviceName;
+
+
             this.Name = id.ToString() + "#设备";
 
             this.dataStore = DataStoreFactory.CreateDefaultDataStore();
@@ -83,7 +84,7 @@ namespace modbusPlcSimulator
 
             if (!this.InitNodeData(ref errStr))
             {
-                string outStr = "[" + this.Name + "]" + "CSV数据解析失败! \n请检查" + type + ".CSV \n";
+                string outStr = "[" + this.Name + "]" + "CSV数据解析失败! \n请检查" + deviceName + ".CSV \n";
                 outStr += errStr;
                 MessageBox.Show(outStr, "出错了", MessageBoxButtons.OK, MessageBoxIcon.Error);  //用风机类型初始化数据
             }
@@ -110,8 +111,7 @@ namespace modbusPlcSimulator
 
             try
             {
-                this.ip = new IPAddress(new byte[] { 0, 0, 0, 0 }); //new IPAddress(new byte[] { 127, 0, 0, 1 });
-                this.listener = new TcpListener(this.ip, this.Port);
+                this.listener = new TcpListener(IPAddress.Any, this.Port);
 
                 this.modbusSlave = ModbusTcpSlave.CreateTcp(this.slaveId, this.listener);
                 this.modbusSlave.DataStore = this.dataStore;
@@ -135,6 +135,7 @@ namespace modbusPlcSimulator
             {
                 return;
             }
+
             this.Status = "服务停止";
             this.isRunning = false;
             try
@@ -150,17 +151,13 @@ namespace modbusPlcSimulator
             }
         }
 
-        public void Dispose()
-        {
-            this.Stop();
-        }
-
 
         public void SetValue16(int groupindex, int offset, ushort value)
         {
             ModbusDataCollection<ushort> data = this.getRegisterGroup(groupindex);
             data[offset] = value;
         }
+
         public void SetValue32(int groupindex, int offset, int value)
         {
             byte[] valueBuf = BitConverter.GetBytes(value);
@@ -171,6 +168,7 @@ namespace modbusPlcSimulator
             data[offset] = lowOrderValue;
             data[offset + 1] = highOrderValue;
         }
+
         public void SetValue32(int groupindex, int offset, float value)
         {
             ushort lowOrderValue = BitConverter.ToUInt16(BitConverter.GetBytes(value), 0);
@@ -179,6 +177,7 @@ namespace modbusPlcSimulator
             data[offset] = lowOrderValue;
             data[offset + 1] = highOrderValue;
         }
+
         public void SetValue16(int groupindex, int offset, bool value)
         {
             byte[] valueBuf = BitConverter.GetBytes(value);//用1代替true
@@ -188,87 +187,6 @@ namespace modbusPlcSimulator
             data[offset] = lowOrderValue;
 
         }
-
-        public bool InitNodeData(ref string errorStr)
-        {
-            this._dt = null;
-
-            try
-            {
-                if (this.Type.Length == 0)
-                { return false; }
-
-                string configDirStr = MAppConfig.getValueByName("defaultCfgDir");
-                string csvFileName = configDirStr + "/" + this.Type + ".csv";// _typeStr是MY1500， 采用MY1500.csv作为模型名
-                bool ret = CSVReader.readCSV(csvFileName, out this._dt);
-                if (!ret)
-                {
-                    return false;
-                }
-
-                for (int i = 0; i < this._dt.Rows.Count; i++) //写入各行数据
-                {
-                    {
-                        string ioName = this._dt.Rows[i]["path"].ToString();
-                        if (ioName.Length == 0)
-                        {
-                            errorStr = csvFileName + "[path] 列出现空值";
-                            return false;
-                        }
-
-                        this.ioName2indexMap[ioName] = i;
-                    }
-
-                    string groupindexStr = this._dt.Rows[i]["groupIndex"].ToString();
-                    if (groupindexStr.Length == 0)
-                    {
-                        errorStr = csvFileName + "[groupIndex] 列出现空值";
-                        return false;
-                    }
-                    int groupindex = int.Parse(groupindexStr);     //功能码
-
-                    string offsetStr = this._dt.Rows[i]["offs"].ToString();
-                    if (offsetStr.Length == 0)
-                    {
-                        errorStr = csvFileName + "[offs] 列出现空值";
-                        return false;
-                    }
-                    if (offsetStr.Contains(':'))
-                    {
-                        offsetStr = offsetStr.Substring(0, offsetStr.IndexOf(":"));
-                    }
-                    int offset = int.Parse(offsetStr);
-
-                    string dataTypeStr = this._dt.Rows[i]["dataType"].ToString();
-                    if (dataTypeStr.Length == 0)
-                    {
-                        errorStr = csvFileName + "[dataType] 列出现空值";
-                        return false;
-                    }
-
-                    float coe = float.Parse(this._dt.Rows[i]["coe"].ToString());
-                    int coe_reverse = this.FloatToInt(1.00000000f / coe);//1.0除以0.1得到0.9
-                    string valueStr = "0";
-                    if (this._dt.Columns.Contains("value"))
-                    {
-                        valueStr = this._dt.Rows[i]["value"].ToString();//如果有value这一列就赋值，否则默认是0
-                    }
-
-                    bool ret1 = this.SetValueUniverse(groupindex, offset, dataTypeStr, coe_reverse, valueStr);
-                    if (ret1 != true)
-                    {
-                        return false;
-                    }
-                }//for
-
-                return true;
-            }
-            catch (Exception e)
-            {
-                errorStr = e.Message;
-                return false;
-            }
-        }//initData
 
         public int FloatToInt(float f)//四舍五入
         {
@@ -353,6 +271,15 @@ namespace modbusPlcSimulator
 
         #endregion
 
+        #region IDisposable Implemenation
+
+        public void Dispose()
+        {
+            this.Stop();
+        }
+
+        #endregion
+
         #region Event Handler
 
         /// <summary>
@@ -392,6 +319,12 @@ namespace modbusPlcSimulator
         {
             switch (groupindex)
             {
+                //case 1:
+                //    return this.dataStore.CoilDiscretes; //不由moddbus修改
+                //    break;
+                //case 2:
+                //    return this.dataStore.InputDiscretes; //不由moddbus修改
+                //    break;
                 case 3:
                     return this.dataStore.HoldingRegisters; //可由moddbus修改
                 case 4:
@@ -401,7 +334,7 @@ namespace modbusPlcSimulator
             }
         }
 
-        private bool SetValueUniverse(int groupindex, int offset, string dataTypeStr, 
+        private bool SetValueUniverse(int groupindex, int offset, string dataTypeStr,
                                       int coe_reverse, string valueStr)
         {
             float value_f;
@@ -478,6 +411,87 @@ namespace modbusPlcSimulator
                 return false;
             }
         }
+
+        private bool InitNodeData(ref string errorStr)
+        {
+            this._dt = null;
+
+            try
+            {
+                if (this.DeviceName.Length == 0)
+                { return false; }
+
+                string configDirStr = MAppConfig.getValueByName("defaultCfgDir");
+                string csvFileName = System.IO.Path.Combine(configDirStr, this.DeviceName + ".csv");// Type是MY1500， 采用MY1500.csv作为模型名
+                bool ret = CSVReader.readCSV(csvFileName, out this._dt);
+                if (!ret)
+                {
+                    return false;
+                }
+
+                for (int i = 0; i < this._dt.Rows.Count; i++) //写入各行数据
+                {
+                    {
+                        string ioName = this._dt.Rows[i]["path"].ToString();
+                        if (ioName.Length == 0)
+                        {
+                            errorStr = csvFileName + "[path] 列出现空值";
+                            return false;
+                        }
+
+                        this.ioName2indexMap[ioName] = i;
+                    }
+
+                    string groupindexStr = this._dt.Rows[i]["groupIndex"].ToString();
+                    if (groupindexStr.Length == 0)
+                    {
+                        errorStr = csvFileName + "[groupIndex] 列出现空值";
+                        return false;
+                    }
+                    int groupindex = int.Parse(groupindexStr);     //功能码
+
+                    string offsetStr = this._dt.Rows[i]["offs"].ToString();
+                    if (offsetStr.Length == 0)
+                    {
+                        errorStr = csvFileName + "[offs] 列出现空值";
+                        return false;
+                    }
+                    if (offsetStr.Contains(':'))
+                    {
+                        offsetStr = offsetStr.Substring(0, offsetStr.IndexOf(":"));
+                    }
+                    int offset = int.Parse(offsetStr);
+
+                    string dataTypeStr = this._dt.Rows[i]["dataType"].ToString();
+                    if (dataTypeStr.Length == 0)
+                    {
+                        errorStr = csvFileName + "[dataType] 列出现空值";
+                        return false;
+                    }
+
+                    float coe = float.Parse(this._dt.Rows[i]["coe"].ToString());
+                    int coe_reverse = this.FloatToInt(1.00000000f / coe);//1.0除以0.1得到0.9
+                    string valueStr = "0";
+                    if (this._dt.Columns.Contains("value"))
+                    {
+                        valueStr = this._dt.Rows[i]["value"].ToString();//如果有value这一列就赋值，否则默认是0
+                    }
+
+                    bool ret1 = this.SetValueUniverse(groupindex, offset, dataTypeStr, coe_reverse, valueStr);
+                    if (ret1 != true)
+                    {
+                        return false;
+                    }
+                }//for
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                errorStr = e.Message;
+                return false;
+            }
+        }//initData
 
         #endregion
     }

@@ -42,7 +42,7 @@ namespace modbusPlcSimulator
                     this.dataGridView1.Rows[index].Cells[0].Value = nodeList[index].Id;
                     this.dataGridView1.Rows[index].Cells[1].Value = nodeList[index].Name;
                     this.dataGridView1.Rows[index].Cells[2].Value = nodeList[index].Port;
-                    this.dataGridView1.Rows[index].Cells[3].Value = nodeList[index].Type;
+                    this.dataGridView1.Rows[index].Cells[3].Value = nodeList[index].DeviceName;
                     this.dataGridView1.Rows[index].Cells[4].Value = nodeList[index].Status;
 
                     if (nodeList[index].isRunning == true)

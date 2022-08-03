@@ -1,18 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace modbusPlcSimulator
 {
-    class CSVReader
+    internal class CSVReader
     {
-        static public bool readCSV(string filePath, out DataTable dt)//从csv读取数据返回table
+        public static bool readCSV(string filePath, out DataTable dt)//从csv读取数据返回table
         {
-           dt = new DataTable(); 
+            dt = new DataTable();
 
             try
             {
@@ -70,7 +67,7 @@ namespace modbusPlcSimulator
             }
             catch (Exception e)
             {
-                MessageBox.Show( filePath+" 解析失败!\n"+ e.Message, "CSV读取出错", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(filePath + " 解析失败!\n" + e.Message, "CSV读取出错", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
         }

@@ -1,16 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Data;
-using System.Windows.Forms;
 
 
 
 namespace modbusPlcSimulator
 {
-    class NodeMgr
+    internal class NodeMgr
     {
         public static List<Node> _nodeList = new List<Node>();
         private static bool _initFlag = false;//初始化标识
@@ -18,13 +14,13 @@ namespace modbusPlcSimulator
 
 
 
-        static public List<Node> getNodeList()
-        { 
-            return _nodeList; 
-        }
-        static public bool init(string cfgFile)
+        public static List<Node> getNodeList()
         {
-            if(_initFlag)
+            return _nodeList;
+        }
+        public static bool init(string cfgFile)
+        {
+            if (_initFlag)
             {
                 stopAll();
                 _nodeList.Clear();
@@ -33,7 +29,10 @@ namespace modbusPlcSimulator
             DataTable dt;
             bool ret = CSVReader.readCSV(cfgFile, out dt);
             if (!ret)
+            {
                 return false;
+            }
+
             try
             {
                 for (int i = 0; i < dt.Rows.Count; i++) //写入各行数据
@@ -42,34 +41,34 @@ namespace modbusPlcSimulator
                     int id = int.Parse(dt.Rows[i][0].ToString());
                     int port = int.Parse(dt.Rows[i][1].ToString());
                     string typeStr = dt.Rows[i][2].ToString();
-                    
-                    Node node = new Node(id, port,typeStr);
+
+                    Node node = new Node(id, port, typeStr);
                     _nodeList.Add(node);
                 }
                 _initFlag = true;//已初始化
-              return true; 
+                return true;
             }
-            catch(Exception)
+            catch (Exception)
             {
                 return false;
             }
 
         }
 
-         static public bool openCfgFile(string cfgFile)//打开一个配置文件
+        public static bool openCfgFile(string cfgFile)//打开一个配置文件
         {
-             if(String.IsNullOrEmpty(cfgFile))
-                 return false;
+            if (string.IsNullOrEmpty(cfgFile))
+            {
+                return false;
+            }
 
-            
-             
-                 init(cfgFile);
-       
+            init(cfgFile);
+
 
             return true;
         }
 
-        static public void stopAll()
+        public static void stopAll()
         {
             foreach (Node node in _nodeList)
             {
@@ -77,7 +76,7 @@ namespace modbusPlcSimulator
             }
         }
 
-        static public void startAll()
+        public static void startAll()
         {
             foreach (Node node in _nodeList)
             {
@@ -85,18 +84,18 @@ namespace modbusPlcSimulator
             }
         }
 
-        static public void startNode(int id)
+        public static void startNode(int id)
         {
             foreach (Node node in _nodeList)
             {
-                if(node._id == id)
+                if (node._id == id)
                 {
                     node.start();
                 }
             }
         }
 
-        static public void stopNode(int id)
+        public static void stopNode(int id)
         {
             foreach (Node node in _nodeList)
             {
@@ -108,6 +107,6 @@ namespace modbusPlcSimulator
         }
 
 
- 
+
     }
 }

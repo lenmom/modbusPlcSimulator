@@ -1,9 +1,8 @@
 ﻿
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.IO;
+using System.Text;
 
 namespace modbusPlcSimulator
 {
@@ -11,12 +10,12 @@ namespace modbusPlcSimulator
     {
         private static Dictionary<string, string> _nameValuePairList = new Dictionary<string, string>();
 
-        static public string GetApplicationPath()
+        public static string GetApplicationPath()
         {
             string ApplicationPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().GetModules()[0].FullyQualifiedName);
             return ApplicationPath;
         }
-        static public void TrimString(ref string strLine)
+        public static void TrimString(ref string strLine)
         {
             if (string.IsNullOrEmpty(strLine))
             {
@@ -66,11 +65,14 @@ namespace modbusPlcSimulator
                         while ((strLine = sr.ReadLine()) != null)
                         {
                             TrimString(ref strLine);
-                            if (strLine.Length < 1) { continue; }
+                            if (strLine.Length < 1)
+                            { continue; }
 
                             int pos = strLine.IndexOf('=');
                             if (pos <= 0)
+                            {
                                 continue;
+                            }
 
                             string name = strLine.Substring(0, pos);
                             string value = strLine.Substring(pos + 1);
@@ -79,8 +81,9 @@ namespace modbusPlcSimulator
                             TrimString(ref value);
 
                             if (string.IsNullOrEmpty(name))// || string.IsNullOrEmpty(value))
+                            {
                                 continue;
-
+                            }
 
                             name = name.ToLower();
                             value = value.ToLower();
@@ -94,34 +97,40 @@ namespace modbusPlcSimulator
                 }
                 return true;
             }
-            catch (Exception )
+            catch (Exception)
             {
-                return false; ;
+                return false;
+                ;
             }
 
         }
 
-   
 
-        private static Dictionary<string, string> _args = new Dictionary<string, string>();
+
+        private static readonly Dictionary<string, string> _args = new Dictionary<string, string>();
         public static string getArg(string str) { if (_args.ContainsKey(str)) { return _args[str]; } return string.Empty; }
         public static void setArg(string name, string value) { _args[name] = value; }
 
 
-        static public bool InitFromFile()
+        public static bool InitFromFile()
         {
-            string fileName = String.Format(@"{0}{1}",GetApplicationPath(), @"\app.cfg");
+            string fileName = string.Format(@"{0}{1}", GetApplicationPath(), @"\app.cfg");
             if (!File.Exists(fileName))
-                fileName = String.Format(@"{0}{1}", GetApplicationPath(), @"\config\app.cfg");
+            {
+                fileName = string.Format(@"{0}{1}", GetApplicationPath(), @"\config\app.cfg");
+            }
+
             try
             {
                 Dictionary<string, string> retDic;
                 if (!loadIni(fileName, out retDic))
+                {
                     return false;
+                }
 
                 _nameValuePairList = retDic;
 
-                foreach (var item in retDic)
+                foreach (KeyValuePair<string, string> item in retDic)
                 {
                     string name = item.Key;
                     string value = item.Value;
@@ -131,10 +140,10 @@ namespace modbusPlcSimulator
             }
             catch (System.Exception)
             {
-                 return false;
+                return false;
             }
         }
-  
+
 
         public static string getValueByName(string name)
         {
@@ -177,8 +186,11 @@ namespace modbusPlcSimulator
         public static Dictionary<string, string> GetAppConfig()
         {
             Dictionary<string, string> appDic = new Dictionary<string, string>();
-            foreach (var keyPair in _nameValuePairList)
+            foreach (KeyValuePair<string, string> keyPair in _nameValuePairList)
+            {
                 appDic[keyPair.Key] = keyPair.Value;
+            }
+
             return appDic;
         }
 
